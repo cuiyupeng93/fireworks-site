@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>珍珠交响诗 · 极境美学 🐚</title>
+    <style>
+        :root {
+            --bg-deep: #0a0e14;
+            --pearl-white: #fdfcfb;
+            --accent-gold: #d4af37;
+            --iridescent-pink: #ffeef8;
+            --iridescent-blue: #e0f2fe;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-deep);
+            overflow: hidden;
+            font-family: 'Optima', 'Candara', 'Noto Serif SC', serif;
+        }
+
+        #canvas {
+            display: block;
+            /* 增加动态水面流光的背景效果 */
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), #1c2533 0%, #0a0e14 100%);
+            position: relative;
+        }
+
+        #canvas::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.015' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+            opacity: 0.04;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            animation: water-flow 20s linear infinite;
+        }
+
+        @keyframes water-flow {
+            0% { transform: scale(1) translate(0, 0); }
+            50% { transform: scale(1.1) translate(-1%, -1%); }
+            100% { transform: scale(1) translate(0, 0); }
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(circle at 50% 50%, transparent 30%, rgba(10, 14, 20, 0.4) 100%);
+        }
+
+        .hero-section {
+            text-align: center;
+            opacity: 0;
+            animation: fadeIn 3s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .main-title {
+            color: var(--pearl-white);
+            font-size: 4.5rem;
+            font-weight: 300;
+            letter-spacing: 0.8rem;
+            margin: 0;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.3), 0 0 60px rgba(212, 175, 55, 0.1);
+            position: relative;
+        }
+
+        .main-title::after {
+            content: '';
+            position: absolute;
+            bottom: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--accent-gold), transparent);
+        }
+
+        .sub-title {
+            color: var(--accent-gold);
+            font-size: 1.2rem;
+            letter-spacing: 0.5rem;
+            margin-top: 35px;
+            text-transform: uppercase;
+            font-weight: 200;
+        }
+
+        .hint-text {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 0.9rem;
+            letter-spacing: 0.3rem;
+            z-index: 20;
+            pointer-events: none;
+        }
+
+        /* 更加真实且灵动的水波纹效果 */
+        .ripple-container {
+            position: absolute;
+            pointer-events: none;
+            z-index: 5;
+            transform: translate(-50%, -50%);
+        }
+
+        .ripple-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            /* 极尽透明的线条，仅保留微弱的光影轮廓 */
+            border: 0.5px solid rgba(255, 255, 255, 0.03);
+            box-shadow: 
+                0 0 6px rgba(255, 255, 255, 0.05),
+                inset 0 0 8px rgba(255, 255, 255, 0.02);
+            border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%;
+            animation: ripple-liquid 4s cubic-bezier(0.15, 0.3, 0.2, 1) forwards,
+                       ripple-wobble 6s ease-in-out infinite alternate;
+            /* 柔和的折射效果，移除强对比度使颜色更浅 */
+            backdrop-filter: brightness(1.12) blur(1px); 
+            filter: blur(0.4px);
+        }
+
+        .ripple-ring:nth-child(2) {
+            animation-delay: 0.2s;
+            border-radius: 63% 37% 30% 70% / 50% 55% 45% 50%;
+            opacity: 0.2;
+            border-color: rgba(224, 242, 254, 0.05);
+        }
+
+        .ripple-ring:nth-child(3) {
+            animation-delay: 0.5s;
+            border-radius: 45% 55% 74% 26% / 47% 42% 58% 53%;
+            opacity: 0.1;
+            border-color: rgba(255, 238, 248, 0.05);
+        }
+
+        @keyframes ripple-liquid {
+            0% { 
+                transform: translate(-50%, -50%) scale(0) rotate(0deg); 
+                opacity: 0; 
+            }
+            15% { 
+                opacity: 0.25; /* 调低峰值不透明度，使颜色更淡 */
+            }
+            100% { 
+                transform: translate(-50%, -50%) scale(5.5) rotate(20deg); 
+                opacity: 0; 
+            }
+        }
+
+        @keyframes ripple-wobble {
+            0% { border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%; }
+            100% { border-radius: 48% 52% 50% 50% / 50% 48% 52% 50%; }
+        }
+    </style>
+</head>
+<body id="body">
+    <div class="overlay">
+        <div class="hero-section">
+            <h1 class="main-title">珍珠交响诗</h1>
+            <div class="sub-title">永恒之光 · 极境美学</div>
+        </div>
+    </div>
+
+    <div class="hint-text">点击天际，感知流动的音律与影</div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let pearls = [];
+        let mist = []; // 鼠标移动产生的光雾
+        let mouseX = -1000, mouseY = -1000;
+        
+        // 音效系统
+        let audioCtx = null;
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playSoftChime(frequency) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(frequency || 440 + Math.random() * 440, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.2);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 1.2);
+        }
+
+        const PEARL_COUNT = 65; // 增加常驻数量，使页面更丰盈
+        const COLORS = [
+            '#fdfcfb', // 经典白
+            '#ffeef8', // 樱花粉
+            '#e0f2fe', // 极地蓝
+            '#fef3c7', // 奶油金
+            '#f3f4f6'  // 晨雾银
+        ];
+
+        // 性能核心：预渲染珍珠纹理
+        const pearlSpriteCache = [];
+        function createPearlSprites() {
+            COLORS.forEach((color, index) => {
+                const size = 64; 
+                const offCanvas = document.createElement('canvas');
+                offCanvas.width = offCanvas.height = size;
+                const offCtx = offCanvas.getContext('2d');
+                const r = size / 2;
+                
+                // 3D 渐变
+                const grad = offCtx.createRadialGradient(r - r*0.3, r - r*0.3, r*0.05, r, r, r);
+                grad.addColorStop(0, '#ffffff');
+                grad.addColorStop(0.3, color);
+                grad.addColorStop(1, '#a1a1a1');
+
+                offCtx.fillStyle = grad;
+                offCtx.beginPath();
+                offCtx.arc(r, r, r - 2, 0, Math.PI * 2);
+                offCtx.fill();
+
+                // 高光
+                offCtx.beginPath();
+                offCtx.ellipse(r - r*0.3, r - r*0.3, r*0.25, r*0.15, -Math.PI/4, 0, Math.PI * 2);
+                offCtx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+                offCtx.fill();
+
+                pearlSpriteCache[index] = offCanvas;
+            });
+        }
+        createPearlSprites();
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        class MistParticle {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = (Math.random() - 0.5) * 1.5;
+                this.vy = (Math.random() - 0.5) * 1.5;
+                this.size = Math.random() * 2 + 1;
+                this.life = 1.0;
+                this.decay = 0.015 + Math.random() * 0.02;
+                this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+                this.vx *= 0.98;
+                this.vy *= 0.98;
+            }
+
+            draw() {
+                ctx.globalAlpha = this.life * 0.6;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                // 闪烁感
+                if (Math.random() > 0.8) {
+                    ctx.fillStyle = "#ffffff";
+                    ctx.arc(this.x, this.y, this.size * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+
+        class Pearl {
+            constructor(x, y, radius, isPersistent = false) {
+                this.x = x || Math.random() * width;
+                this.y = y || Math.random() * height;
+                this.radius = radius || Math.random() * 18 + 10; // 再次调大：基础 10px，最大 28px
+                this.baseRadius = this.radius;
+                this.colorIdx = Math.floor(Math.random() * COLORS.length);
+                this.color = COLORS[this.colorIdx];
+                this.vx = (Math.random() - 0.5) * 0.2; // 进一步减速
+                this.vy = (Math.random() - 0.5) * 0.2;
+                this.alpha = Math.random() * 0.5 + 0.4;
+                this.pulse = Math.random() * Math.PI * 2;
+                this.pulseSpeed = 0.01 + Math.random() * 0.01;
+                this.isPersistent = isPersistent;
+                this.life = 1.0;
+                this.decay = 0.002 + Math.random() * 0.003; // 加快消失
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+
+                if (!this.isPersistent) {
+                    this.life -= this.decay;
+                }
+
+                if (this.x < -50) this.x = width + 50;
+                if (this.x > width + 50) this.x = -50;
+                if (this.y < -50) this.y = height + 50;
+                if (this.y > height + 50) this.y = -50;
+
+                const dx = mouseX - this.x;
+                const dy = mouseY - this.y;
+                const distSq = dx * dx + dy * dy;
+                if (distSq < 40000) {
+                    const dist = Math.sqrt(distSq);
+                    const force = (200 - dist) / 5000;
+                    this.vx -= dx * force * 0.05;
+                    this.vy -= dy * force * 0.05;
+                }
+
+                this.vx *= 0.99;
+                this.vy *= 0.99;
+                this.pulse += this.pulseSpeed;
+            }
+
+            draw() {
+                const opacity = (this.alpha + Math.sin(this.pulse) * 0.15) * this.life;
+                if (opacity <= 0) return;
+                
+                ctx.globalAlpha = opacity;
+                const r = this.radius;
+                ctx.drawImage(pearlSpriteCache[this.colorIdx], this.x - r, this.y - r, r * 2, r * 2);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function init() {
+            pearls = [];
+            for (let i = 0; i < PEARL_COUNT; i++) {
+                pearls.push(new Pearl(null, null, null, true)); // 初始珍珠是永恒的
+            }
+        }
+
+        function createBurst(x, y) {
+            playSoftChime(200 + Math.random() * 600);
+            for (let i = 0; i < 4; i++) {
+                const p = new Pearl(x, y, Math.random() * 12 + 10, false); // 调大点击生成的珍珠
+                const angle = Math.random() * Math.PI * 2;
+                const force = Math.random() * 2 + 1;
+                p.vx = Math.cos(angle) * force;
+                p.vy = Math.sin(angle) * force;
+                p.alpha = 0.8;
+                pearls.push(p);
+            }
+        }
+
+        function loop() {
+            ctx.clearRect(0, 0, width, height);
+
+            // 绘制连线 (性能优化：减少连线计算频率)
+            const maxDistSq = 180 * 180;
+            ctx.beginPath();
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < pearls.length; i += 1) {
+                const pi = pearls[i];
+                // 限制每颗珍珠最多连接的线数
+                let connections = 0;
+                for (let j = i + 1; j < pearls.length && connections < 3; j++) {
+                    const pj = pearls[j];
+                    const dx = pi.x - pj.x;
+                    const dy = pi.y - pj.y;
+                    const dSq = dx * dx + dy * dy;
+                    if (dSq < maxDistSq) {
+                        const lineAlpha = 0.1 * (1 - dSq / maxDistSq) * pi.life * pj.life;
+                        ctx.strokeStyle = `rgba(212, 175, 55, ${lineAlpha})`;
+                        ctx.moveTo(pi.x, pi.y);
+                        ctx.lineTo(pj.x, pj.y);
+                        connections++;
+                    }
+                }
+            }
+            ctx.stroke();
+
+            for (let i = pearls.length - 1; i >= 0; i--) {
+                const p = pearls[i];
+                p.update();
+                if (p.life <= 0) {
+                    pearls.splice(i, 1);
+                } else {
+                    p.draw();
+                }
+            }
+
+            // 绘制鼠标光雾
+            for (let i = mist.length - 1; i >= 0; i--) {
+                const m = mist[i];
+                m.update();
+                if (m.life <= 0) {
+                    mist.splice(i, 1);
+                } else {
+                    m.draw();
+                }
+            }
+            ctx.globalAlpha = 1.0;
+
+            requestAnimationFrame(loop);
+        }
+
+        window.addEventListener('mousemove', (e) => {
+            initAudio();
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+            
+            // 动态背景光源跟随
+            canvas.style.setProperty('--mouse-x', (e.clientX / width * 100) + '%');
+            canvas.style.setProperty('--mouse-y', (e.clientY / height * 100) + '%');
+
+            // 产生唯美的光雾
+            if (Math.random() > 0.4) {
+                mist.push(new MistParticle(e.clientX, e.clientY));
+            }
+        });
+
+        window.addEventListener('mousedown', (e) => {
+            initAudio();
+            createBurst(e.clientX, e.clientY);
+            
+            const container = document.createElement('div');
+            container.className = 'ripple-container';
+            container.style.left = e.clientX + 'px';
+            container.style.top = e.clientY + 'px';
+            
+            const size = Math.random() * 50 + 200;
+            const baseRotate = Math.random() * 360; // 随机基础旋转角度
+
+            for(let i=0; i<3; i++) {
+                const ring = document.createElement('div');
+                ring.className = 'ripple-ring';
+                ring.style.width = size + 'px';
+                ring.style.height = size + 'px';
+                
+                // 赋予每一层波纹独特且随机的不规则形状
+                const r1 = Math.floor(Math.random() * 20 + 30);
+                const r2 = Math.floor(Math.random() * 20 + 30);
+                const r3 = Math.floor(Math.random() * 20 + 30);
+                const r4 = Math.floor(Math.random() * 20 + 30);
+                const r5 = Math.floor(Math.random() * 20 + 30);
+                const r6 = Math.floor(Math.random() * 20 + 30);
+                const r7 = Math.floor(Math.random() * 20 + 30);
+                const r8 = Math.floor(Math.random() * 20 + 30);
+                
+                ring.style.borderRadius = `${r1}% ${100-r1}% ${r2}% ${100-r2}% / ${r3}% ${r4}% ${100-r4}% ${100-r3}%`;
+                
+                // 随机初始旋转和微小的动画偏移
+                ring.style.transform = `translate(-50%, -50%) scale(0) rotate(${baseRotate + Math.random() * 45}deg)`;
+                
+                container.appendChild(ring);
+            }
+            
+            document.body.appendChild(container);
+            setTimeout(() => container.remove(), 3000);
+        });
+
+        init();
+        loop();
+    </script>
+</body>
+</html>
