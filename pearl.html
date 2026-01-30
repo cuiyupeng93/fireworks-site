@@ -139,6 +139,7 @@
             /* 柔和的折射效果，移除强对比度使颜色更浅 */
             backdrop-filter: brightness(1.12) blur(1px); 
             filter: blur(0.4px);
+            will-change: transform, opacity;
         }
 
         .ripple-ring:nth-child(2) {
@@ -194,6 +195,10 @@
         let width, height;
         let pearls = [];
         let mist = []; // 鼠标移动产生的光雾
+        let ripples = []; // 画布波纹
+        const mistPool = []; // 对象池：光雾粒子
+        const pearlPool = []; // 对象池：珍珠粒子
+        const ripplePool = []; // 对象池：波纹
         let mouseX = -1000, mouseY = -1000;
         
         // 音效系统
@@ -272,7 +277,11 @@
         resize();
 
         class MistParticle {
-            constructor(x, y) {
+            constructor() {
+                this.init(0, 0);
+            }
+
+            init(x, y) {
                 this.x = x;
                 this.y = y;
                 this.vx = (Math.random() - 0.5) * 1.5;
@@ -281,6 +290,7 @@
                 this.life = 1.0;
                 this.decay = 0.015 + Math.random() * 0.02;
                 this.color = COLORS[Math.floor(Math.random() * COLORS.length)];
+                return this;
             }
 
             update() {
@@ -289,17 +299,20 @@
                 this.life -= this.decay;
                 this.vx *= 0.98;
                 this.vy *= 0.98;
+                return this.life > 0;
             }
 
             draw() {
-                ctx.globalAlpha = this.life * 0.6;
+                const alpha = this.life * 0.6;
+                ctx.globalAlpha = alpha;
                 ctx.fillStyle = this.color;
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
                 ctx.fill();
-                // 闪烁感
+                
                 if (Math.random() > 0.8) {
                     ctx.fillStyle = "#ffffff";
+                    ctx.beginPath();
                     ctx.arc(this.x, this.y, this.size * 1.5, 0, Math.PI * 2);
                     ctx.fill();
                 }
@@ -307,21 +320,26 @@
         }
 
         class Pearl {
-            constructor(x, y, radius, isPersistent = false) {
+            constructor() {
+                this.init(0, 0, 0, true);
+            }
+
+            init(x, y, radius, isPersistent = false) {
                 this.x = x || Math.random() * width;
                 this.y = y || Math.random() * height;
-                this.radius = radius || Math.random() * 18 + 10; // 再次调大：基础 10px，最大 28px
+                this.radius = radius || Math.random() * 18 + 10;
                 this.baseRadius = this.radius;
                 this.colorIdx = Math.floor(Math.random() * COLORS.length);
                 this.color = COLORS[this.colorIdx];
-                this.vx = (Math.random() - 0.5) * 0.2; // 进一步减速
+                this.vx = (Math.random() - 0.5) * 0.2;
                 this.vy = (Math.random() - 0.5) * 0.2;
                 this.alpha = Math.random() * 0.5 + 0.4;
                 this.pulse = Math.random() * Math.PI * 2;
                 this.pulseSpeed = 0.01 + Math.random() * 0.01;
                 this.isPersistent = isPersistent;
                 this.life = 1.0;
-                this.decay = 0.002 + Math.random() * 0.003; // 加快消失
+                this.decay = 0.002 + Math.random() * 0.003;
+                return this;
             }
 
             update() {
@@ -350,6 +368,7 @@
                 this.vx *= 0.99;
                 this.vy *= 0.99;
                 this.pulse += this.pulseSpeed;
+                return this.isPersistent || this.life > 0;
             }
 
             draw() {
@@ -359,21 +378,90 @@
                 ctx.globalAlpha = opacity;
                 const r = this.radius;
                 ctx.drawImage(pearlSpriteCache[this.colorIdx], this.x - r, this.y - r, r * 2, r * 2);
-                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        class Ripple {
+            constructor() {
+                this.init(0, 0);
+            }
+
+            init(x, y, delay = 0) {
+                this.x = x;
+                this.y = y;
+                this.radius = 0;
+                this.maxRadius = Math.random() * 80 + 180;
+                this.life = 1.0;
+                this.delay = delay; // 增加延迟，使多层波纹有先后顺序
+                this.decay = 0.006 + Math.random() * 0.004;
+                this.rotate = Math.random() * Math.PI * 2;
+                // 为每一层波纹生成独特的波动频率
+                this.noiseFreq = Math.random() * 2 + 2;
+                this.noiseAmp = Math.random() * 0.1 + 0.05;
+                return this;
+            }
+
+            update() {
+                if (this.delay > 0) {
+                    this.delay--;
+                    return true;
+                }
+                this.radius += (this.maxRadius - this.radius) * 0.04;
+                this.life -= this.decay;
+                return this.life > 0;
+            }
+
+            draw() {
+                if (this.delay > 0) return;
+                
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotate + (1 - this.life) * 0.3);
+                
+                const alpha = this.life * 0.2;
+                ctx.globalAlpha = alpha;
+                
+                // 模拟原本的 box-shadow 效果
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = 'rgba(255, 255, 255, 0.2)';
+                
+                ctx.strokeStyle = `rgba(255, 255, 255, ${this.life * 0.4})`;
+                ctx.lineWidth = 0.8;
+                
+                ctx.beginPath();
+                const r = this.radius;
+                const segments = 60;
+                for(let i = 0; i <= segments; i++) {
+                    const angle = (i / segments) * Math.PI * 2;
+                    // 使用多重正弦函数模拟有机的不规则形态
+                    const noise = Math.sin(angle * this.noiseFreq) * Math.cos(angle * 2) * (r * this.noiseAmp);
+                    const px = Math.cos(angle) * (r + noise);
+                    const py = Math.sin(angle) * (r + noise);
+                    if(i === 0) ctx.moveTo(px, py);
+                    else ctx.lineTo(px, py);
+                }
+                ctx.closePath();
+                ctx.stroke();
+                
+                // 增加一层极细微的内光晕
+                ctx.lineWidth = 0.3;
+                ctx.stroke();
+                
+                ctx.restore();
             }
         }
 
         function init() {
             pearls = [];
             for (let i = 0; i < PEARL_COUNT; i++) {
-                pearls.push(new Pearl(null, null, null, true)); // 初始珍珠是永恒的
+                pearls.push(new Pearl().init(null, null, null, true)); // 初始珍珠是永恒的
             }
         }
 
         function createBurst(x, y) {
             playSoftChime(200 + Math.random() * 600);
             for (let i = 0; i < 4; i++) {
-                const p = new Pearl(x, y, Math.random() * 12 + 10, false); // 调大点击生成的珍珠
+                const p = pearlPool.length > 0 ? pearlPool.pop().init(x, y, Math.random() * 12 + 10, false) : new Pearl().init(x, y, Math.random() * 12 + 10, false);
                 const angle = Math.random() * Math.PI * 2;
                 const force = Math.random() * 2 + 1;
                 p.vx = Math.cos(angle) * force;
@@ -381,18 +469,34 @@
                 p.alpha = 0.8;
                 pearls.push(p);
             }
+            // 添加 3 层具有先后节奏感的 Canvas 波纹
+            for(let i=0; i<3; i++) {
+                const delay = i * 15; // 每层间隔约 0.25秒
+                const r = ripplePool.length > 0 ? ripplePool.pop().init(x, y, delay) : new Ripple().init(x, y, delay);
+                ripples.push(r);
+            }
         }
 
         function loop() {
             ctx.clearRect(0, 0, width, height);
 
-            // 绘制连线 (性能优化：减少连线计算频率)
+            // 1. 更新并绘制波纹 (Canvas 实现，无 DOM 压力)
+            for (let i = ripples.length - 1; i >= 0; i--) {
+                const r = ripples[i];
+                if (!r.update()) {
+                    ripplePool.push(ripples.splice(i, 1)[0]);
+                } else {
+                    r.draw();
+                }
+            }
+
+            // 2. 绘制珍珠间的连线：优化渲染性能
             const maxDistSq = 180 * 180;
-            ctx.beginPath();
             ctx.lineWidth = 0.5;
-            for (let i = 0; i < pearls.length; i += 1) {
+            ctx.strokeStyle = 'rgba(212, 175, 55, 0.08)'; // 使用固定低透明度，合并为一个 path 绘制提高性能
+            ctx.beginPath();
+            for (let i = 0; i < pearls.length; i++) {
                 const pi = pearls[i];
-                // 限制每颗珍珠最多连接的线数
                 let connections = 0;
                 for (let j = i + 1; j < pearls.length && connections < 3; j++) {
                     const pj = pearls[j];
@@ -400,8 +504,6 @@
                     const dy = pi.y - pj.y;
                     const dSq = dx * dx + dy * dy;
                     if (dSq < maxDistSq) {
-                        const lineAlpha = 0.1 * (1 - dSq / maxDistSq) * pi.life * pj.life;
-                        ctx.strokeStyle = `rgba(212, 175, 55, ${lineAlpha})`;
                         ctx.moveTo(pi.x, pi.y);
                         ctx.lineTo(pj.x, pj.y);
                         connections++;
@@ -410,22 +512,21 @@
             }
             ctx.stroke();
 
+            // 3. 更新并绘制珍珠
             for (let i = pearls.length - 1; i >= 0; i--) {
                 const p = pearls[i];
-                p.update();
-                if (p.life <= 0) {
-                    pearls.splice(i, 1);
+                if (!p.update()) {
+                    pearlPool.push(pearls.splice(i, 1)[0]);
                 } else {
                     p.draw();
                 }
             }
 
-            // 绘制鼠标光雾
+            // 4. 更新并绘制鼠标光雾（使用对象池减少 GC）
             for (let i = mist.length - 1; i >= 0; i--) {
                 const m = mist[i];
-                m.update();
-                if (m.life <= 0) {
-                    mist.splice(i, 1);
+                if (!m.update()) {
+                    mistPool.push(mist.splice(i, 1)[0]);
                 } else {
                     m.draw();
                 }
@@ -435,59 +536,32 @@
             requestAnimationFrame(loop);
         }
 
+        let lastMouseMove = 0;
         window.addEventListener('mousemove', (e) => {
-            initAudio();
+            const now = Date.now();
             mouseX = e.clientX;
             mouseY = e.clientY;
+
+            // 节流处理，避免过高频率的 DOM/计算更新
+            if (now - lastMouseMove < 16) return; 
+            lastMouseMove = now;
+
+            initAudio();
             
             // 动态背景光源跟随
             canvas.style.setProperty('--mouse-x', (e.clientX / width * 100) + '%');
             canvas.style.setProperty('--mouse-y', (e.clientY / height * 100) + '%');
 
-            // 产生唯美的光雾
+            // 产生唯美的光雾（从对象池获取）
             if (Math.random() > 0.4) {
-                mist.push(new MistParticle(e.clientX, e.clientY));
+                const p = mistPool.length > 0 ? mistPool.pop().init(e.clientX, e.clientY) : new MistParticle().init(e.clientX, e.clientY);
+                mist.push(p);
             }
         });
 
         window.addEventListener('mousedown', (e) => {
             initAudio();
             createBurst(e.clientX, e.clientY);
-            
-            const container = document.createElement('div');
-            container.className = 'ripple-container';
-            container.style.left = e.clientX + 'px';
-            container.style.top = e.clientY + 'px';
-            
-            const size = Math.random() * 50 + 200;
-            const baseRotate = Math.random() * 360; // 随机基础旋转角度
-
-            for(let i=0; i<3; i++) {
-                const ring = document.createElement('div');
-                ring.className = 'ripple-ring';
-                ring.style.width = size + 'px';
-                ring.style.height = size + 'px';
-                
-                // 赋予每一层波纹独特且随机的不规则形状
-                const r1 = Math.floor(Math.random() * 20 + 30);
-                const r2 = Math.floor(Math.random() * 20 + 30);
-                const r3 = Math.floor(Math.random() * 20 + 30);
-                const r4 = Math.floor(Math.random() * 20 + 30);
-                const r5 = Math.floor(Math.random() * 20 + 30);
-                const r6 = Math.floor(Math.random() * 20 + 30);
-                const r7 = Math.floor(Math.random() * 20 + 30);
-                const r8 = Math.floor(Math.random() * 20 + 30);
-                
-                ring.style.borderRadius = `${r1}% ${100-r1}% ${r2}% ${100-r2}% / ${r3}% ${r4}% ${100-r4}% ${100-r3}%`;
-                
-                // 随机初始旋转和微小的动画偏移
-                ring.style.transform = `translate(-50%, -50%) scale(0) rotate(${baseRotate + Math.random() * 45}deg)`;
-                
-                container.appendChild(ring);
-            }
-            
-            document.body.appendChild(container);
-            setTimeout(() => container.remove(), 3000);
         });
 
         init();
