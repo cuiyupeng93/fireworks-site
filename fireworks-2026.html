@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 盛世华章 · 极致优化版 🎆</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #050505;
+            overflow: hidden;
+            font-family: 'STKaiti', 'KaiTi', 'Microsoft YaHei', sans-serif;
+        }
+
+        #canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        .decoration-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .lantern-box {
+            position: absolute;
+            top: -20px;
+            width: 120px;
+            animation: swing 4s ease-in-out infinite;
+            transform-origin: top center;
+        }
+
+        .lantern-left { left: 5%; }
+        .lantern-right { right: 5%; }
+
+        @keyframes swing {
+            0%, 100% { transform: rotate(-8deg); }
+            50% { transform: rotate(8deg); }
+        }
+
+        .ui-panel {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 100;
+            width: 100%;
+        }
+
+        .festive-title {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .title-main {
+            color: #d42d2d;
+            font-size: 6rem;
+            font-weight: bold;
+            text-shadow: 0 0 15px #ffd700, 0 0 30px #d42d2d;
+            margin: 0;
+            letter-spacing: 15px;
+            animation: breath 3s ease-in-out infinite;
+        }
+
+        .title-sub {
+            color: #ffd700;
+            font-size: 2rem;
+            letter-spacing: 8px;
+            margin-top: 10px;
+            text-shadow: 0 0 5px #000;
+        }
+
+        @keyframes breath {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+
+        .btn-launch {
+            background: linear-gradient(135deg, #d42d2d 0%, #a11f1f 100%);
+            border: 2px solid #ffd700;
+            border-radius: 5px;
+            color: #ffd700;
+            font-size: 1.5rem;
+            padding: 12px 40px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(212, 45, 45, 0.6);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            font-weight: bold;
+        }
+
+        .btn-launch:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #ffd700;
+        }
+
+        .hint {
+            color: rgba(255, 215, 0, 0.7);
+            margin-top: 15px;
+            font-size: 1rem;
+        }
+
+        .shake {
+            animation: shakeScreen 0.4s cubic-bezier(.36,.07,.19,.97) both;
+        }
+
+        @keyframes shakeScreen {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body id="body">
+    <div class="decoration-layer">
+        <svg class="lantern-box lantern-left" viewBox="0 0 100 150">
+            <path d="M50 0 L50 20" stroke="#ffd700" stroke-width="2"/>
+            <ellipse cx="50" cy="70" rx="35" ry="45" fill="#d42d2d" stroke="#ffd700" stroke-width="3"/>
+            <rect x="35" y="25" width="30" height="10" fill="#ffd700"/>
+            <rect x="35" y="105" width="30" height="10" fill="#ffd700"/>
+            <text x="50" y="78" text-anchor="middle" fill="#ffd700" font-size="25" font-weight="bold">福</text>
+        </svg>
+        <svg class="lantern-box lantern-right" viewBox="0 0 100 150">
+            <path d="M50 0 L50 20" stroke="#ffd700" stroke-width="2"/>
+            <ellipse cx="50" cy="70" rx="35" ry="45" fill="#d42d2d" stroke="#ffd700" stroke-width="3"/>
+            <rect x="35" y="25" width="30" height="10" fill="#ffd700"/>
+            <rect x="35" y="105" width="30" height="10" fill="#ffd700"/>
+            <text x="50" y="78" text-anchor="middle" fill="#ffd700" font-size="25" font-weight="bold">顺</text>
+        </svg>
+    </div>
+
+    <div class="festive-title">
+        <h1 class="title-main">2026</h1>
+        <div class="title-sub">盛世华章 · 岁岁平安</div>
+    </div>
+
+    <div class="ui-panel">
+        <button class="btn-launch" id="autoBtn">🏮 开启庆典盛宴 🏮</button>
+        <div class="hint">点击天际，或按空格键</div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d', { alpha: false }); // 优化：关闭透明通道提升绘制速度
+        const autoBtn = document.getElementById('autoBtn');
+        const body = document.getElementById('body');
+
+        let width, height;
+        let fireworks = [];
+        let particles = [];
+        let autoMode = false;
+        const MAX_PARTICLES = 1000; // 优化：限制全局粒子总数
+
+        // 音频上下文（懒加载，由于浏览器限制必须由交互触发）
+        let audioCtx = null;
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        // 合成爆炸音效
+        function playExplosionSound() {
+            if (!audioCtx) return;
+            
+            const bufferSize = audioCtx.sampleRate * 0.5;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+
+            // 生成白噪音
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = Math.random() * 2 - 1;
+            }
+
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = buffer;
+
+            // 滤波器：模拟低沉的爆炸感
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(500, audioCtx.currentTime);
+            filter.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.5);
+
+            // 增益器：指数衰减
+            const gainNode = audioCtx.createGain();
+            gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+            noiseSource.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            noiseSource.start();
+            noiseSource.stop(audioCtx.currentTime + 0.5);
+        }
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+            // 每次缩放填充背景，防止残留
+            ctx.fillStyle = '#050505';
+            ctx.fillRect(0, 0, width, height);
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function getRandomFestiveColor() {
+            const festiveHues = [0, 45, 30, 330, 120, 200];
+            return festiveHues[Math.floor(Math.random() * festiveHues.length)] + (Math.random() * 20 - 10);
+        }
+
+        class Firework {
+            constructor(tx, ty) {
+                this.x = Math.random() * width;
+                this.y = height;
+                this.tx = tx;
+                this.ty = ty;
+                this.angle = Math.atan2(this.ty - this.y, this.tx - this.x);
+                this.speed = 1.8;
+                this.accel = 1.05;
+                this.hue = getRandomFestiveColor();
+                this.trail = [];
+                this.trailLen = 6;
+            }
+
+            update(idx) {
+                this.trail.unshift([this.x, this.y]);
+                if(this.trail.length > this.trailLen) this.trail.pop();
+                
+                this.speed *= this.accel;
+                const vx = Math.cos(this.angle) * this.speed;
+                const vy = Math.sin(this.angle) * this.speed;
+                
+                if(Math.hypot(this.tx - this.x, this.ty - this.y) <= this.speed) {
+                    explode(this.tx, this.ty, this.hue);
+                    fireworks.splice(idx, 1);
+                } else {
+                    this.x += vx;
+                    this.y += vy;
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = `hsl(${this.hue}, 100%, 60%)`;
+                const start = this.trail[this.trail.length - 1] || [this.x, this.y];
+                ctx.moveTo(start[0], start[1]);
+                ctx.lineTo(this.x, this.y);
+                ctx.stroke();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, hue, isChild = false) {
+                this.x = x;
+                this.y = y;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * (isChild ? 6 : 12) + 2;
+                this.friction = 0.95;
+                this.gravity = 0.7;
+                this.hue = hue + (Math.random() * 30 - 15);
+                this.alpha = 1;
+                this.decay = Math.random() * 0.012 + 0.01;
+                this.isChild = isChild;
+                this.sparkle = Math.random() > 0.8;
+            }
+
+            update(idx) {
+                this.speed *= this.friction;
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed + this.gravity;
+                this.alpha -= this.decay;
+
+                if (this.alpha <= 0) {
+                    if (!this.isChild && Math.random() > 0.96) {
+                        explode(this.x, this.y, this.hue, true);
+                    }
+                    particles.splice(idx, 1);
+                }
+            }
+
+            draw() {
+                const brightness = (this.sparkle && Math.random() > 0.5) ? 95 : 65;
+                const radius = this.isChild ? 1.2 : 2.2;
+                
+                // 核心
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+                ctx.fillStyle = `hsla(${this.hue}, 100%, ${brightness}%, ${this.alpha})`;
+                ctx.fill();
+
+                // 优化：使用简单的叠加替代 shadowBlur
+                if (this.alpha > 0.5) {
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, radius * 3, 0, Math.PI * 2);
+                    ctx.fillStyle = `hsla(${this.hue}, 100%, 50%, ${this.alpha * 0.2})`;
+                    ctx.fill();
+                }
+            }
+        }
+
+        function explode(x, y, hue, isChild = false) {
+            if (particles.length > MAX_PARTICLES) return; // 阈值控制
+            
+            const count = isChild ? 15 : 100;
+            for(let i = 0; i < count; i++) {
+                particles.push(new Particle(x, y, hue, isChild));
+            }
+            
+            if (!isChild) {
+                playExplosionSound();
+                triggerShake();
+                // 瞬间闪光
+                ctx.fillStyle = `hsla(${hue}, 100%, 90%, 0.1)`;
+                ctx.fillRect(0, 0, width, height);
+            }
+        }
+
+        function triggerShake() {
+            body.classList.remove('shake');
+            void body.offsetWidth;
+            body.classList.add('shake');
+        }
+
+        function loop() {
+            requestAnimationFrame(loop);
+            
+            // 优化：背景覆盖而不是 destination-out 以提升某些浏览器的稳定性
+            ctx.fillStyle = 'rgba(5, 5, 5, 0.22)';
+            ctx.fillRect(0, 0, width, height);
+            
+            ctx.globalCompositeOperation = 'lighter';
+            for (let i = fireworks.length - 1; i >= 0; i--) {
+                fireworks[i].draw();
+                fireworks[i].update(i);
+            }
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].draw();
+                particles[i].update(i);
+            }
+            ctx.globalCompositeOperation = 'source-over';
+        }
+
+        function handleInteraction(e) {
+            initAudio();
+            const x = e.pageX || (e.touches ? e.touches[0].pageX : 0);
+            const y = e.pageY || (e.touches ? e.touches[0].pageY : 0);
+            fireworks.push(new Firework(x, y));
+        }
+
+        canvas.addEventListener('mousedown', handleInteraction);
+        window.addEventListener('keydown', (e) => {
+            if(e.code === 'Space') {
+                initAudio();
+                fireworks.push(new Firework(Math.random() * width, Math.random() * height * 0.7));
+            }
+        });
+
+        autoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            initAudio();
+            autoMode = !autoMode;
+            autoBtn.innerText = autoMode ? "🏮 暂停庆典 🏮" : "🏮 开启庆典盛宴 🏮";
+            if(autoMode) autoLaunch();
+        });
+
+        function autoLaunch() {
+            if(!autoMode) return;
+            fireworks.push(new Firework(Math.random() * width, Math.random() * height * 0.5 + 50));
+            setTimeout(autoLaunch, Math.random() * 600 + 400);
+        }
+
+        loop();
+    </script>
+</body>
+</html>
