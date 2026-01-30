@@ -28,6 +28,7 @@
             /* 增加动态水面流光的背景效果 */
             background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), #1c2533 0%, #0a0e14 100%);
             position: relative;
+            touch-action: none;
         }
 
         #canvas::after {
@@ -75,9 +76,9 @@
 
         .main-title {
             color: var(--pearl-white);
-            font-size: 4.5rem;
+            font-size: 3.2rem;
             font-weight: 300;
-            letter-spacing: 0.8rem;
+            letter-spacing: 0.6rem;
             margin: 0;
             text-shadow: 0 0 30px rgba(255, 255, 255, 0.3), 0 0 60px rgba(212, 175, 55, 0.1);
             position: relative;
@@ -174,6 +175,24 @@
             0% { border-radius: 38% 62% 63% 37% / 41% 44% 56% 59%; }
             100% { border-radius: 48% 52% 50% 50% / 50% 48% 52% 50%; }
         }
+
+        /* 移动端适配 */
+        @media screen and (max-width: 768px) {
+            .main-title {
+                font-size: 1.8rem;
+                letter-spacing: 0.3rem;
+            }
+            .sub-title {
+                font-size: 0.9rem;
+                letter-spacing: 0.3rem;
+                margin-top: 20px;
+            }
+            .hint-text {
+                font-size: 0.75rem;
+                letter-spacing: 0.2rem;
+                bottom: 30px;
+            }
+        }
     </style>
 </head>
 <body id="body">
@@ -204,8 +223,12 @@
         // 音效系统
         let audioCtx = null;
         function initAudio() {
-            if (audioCtx) return;
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
         }
 
         function playSoftChime(frequency) {
@@ -537,32 +560,35 @@
         }
 
         let lastMouseMove = 0;
-        window.addEventListener('mousemove', (e) => {
-            const now = Date.now();
-            mouseX = e.clientX;
-            mouseY = e.clientY;
+        function handleMove(e) {
+            const x = e.clientX;
+            const y = e.clientY;
+            
+            mouseX = x;
+            mouseY = y;
 
-            // 节流处理，避免过高频率的 DOM/计算更新
+            const now = Date.now();
             if (now - lastMouseMove < 16) return; 
             lastMouseMove = now;
 
             initAudio();
             
-            // 动态背景光源跟随
-            canvas.style.setProperty('--mouse-x', (e.clientX / width * 100) + '%');
-            canvas.style.setProperty('--mouse-y', (e.clientY / height * 100) + '%');
+            canvas.style.setProperty('--mouse-x', (x / width * 100) + '%');
+            canvas.style.setProperty('--mouse-y', (y / height * 100) + '%');
 
-            // 产生唯美的光雾（从对象池获取）
             if (Math.random() > 0.4) {
-                const p = mistPool.length > 0 ? mistPool.pop().init(e.clientX, e.clientY) : new MistParticle().init(e.clientX, e.clientY);
+                const p = mistPool.length > 0 ? mistPool.pop().init(x, y) : new MistParticle().init(x, y);
                 mist.push(p);
             }
-        });
+        }
 
-        window.addEventListener('mousedown', (e) => {
+        function handleStart(e) {
             initAudio();
             createBurst(e.clientX, e.clientY);
-        });
+        }
+
+        window.addEventListener('pointermove', handleMove);
+        window.addEventListener('pointerdown', handleStart);
 
         init();
         loop();
